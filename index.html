@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --bg: #0d1117;
@@ -94,6 +95,27 @@
     transition: all 0.15s;
   }
   .api-key-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .auth-wrap { display: flex; align-items: center; gap: 10px; }
+  .google-signin-btn { min-width: 210px; min-height: 38px; }
+  .google-auth-hint { font-size: 11px; color: var(--text3); }
+  .user-chip {
+    display: none; align-items: center; gap: 8px;
+    padding: 5px 8px; border-radius: 999px;
+    background: var(--bg4); border: 1px solid var(--border2);
+  }
+  .user-chip.open { display: flex; }
+  .user-avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    object-fit: cover; background: var(--bg3); border: 1px solid var(--border2);
+  }
+  .user-name { font-size: 12px; color: var(--text2); max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .signout-btn {
+    border: 1px solid var(--border2); background: transparent;
+    color: var(--text2); border-radius: 999px; padding: 4px 10px;
+    font-size: 11px; cursor: pointer; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .signout-btn:hover { border-color: var(--red); color: var(--red-text); }
 
   /* ── MODAL ── */
   .modal-overlay {
@@ -148,6 +170,31 @@
   .nav-btn:hover { color: var(--text2); }
   .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .nav-btn i { font-size: 16px; }
+
+  .auth-gate {
+    display: none;
+    min-height: calc(100vh - 56px);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .auth-card {
+    max-width: 560px;
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  }
+  .auth-card h2 { font-size: 20px; margin-bottom: 10px; }
+  .auth-card p { color: var(--text2); font-size: 13px; margin-bottom: 14px; }
+  .auth-steps { margin-top: 10px; color: var(--text2); font-size: 12px; line-height: 1.7; }
+
+  body.auth-locked .nav,
+  body.auth-locked .content,
+  body.auth-locked .footer { display: none; }
+  body.auth-locked .auth-gate { display: flex; }
 
   /* ── MAIN CONTENT ── */
   .content {
@@ -426,6 +473,9 @@
     .metrics-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
     .header { padding: 0 14px; }
     .brand-sub { display: none; }
+    .auth-wrap { flex-direction: column; align-items: flex-end; gap: 6px; }
+    .google-signin-btn { min-width: 170px; }
+    .user-name { max-width: 90px; }
   }
 </style>
 </head>
@@ -443,11 +493,38 @@
     </div>
     <div class="header-right">
       <div class="status-badge"><span class="pulse"></span>AI Active</div>
+      <button class="api-key-btn" onclick="openGoogleModal()">
+        <i class="ti ti-brand-google"></i> Google Setup
+      </button>
       <button class="api-key-btn" onclick="openApiModal()">
         <i class="ti ti-key"></i> API Key
       </button>
+      <div class="auth-wrap">
+        <div>
+          <div id="google-signin-btn" class="google-signin-btn"></div>
+          <div id="google-auth-hint" class="google-auth-hint"></div>
+        </div>
+        <div id="user-chip" class="user-chip">
+          <img id="user-avatar" class="user-avatar" alt="User avatar" />
+          <span id="user-name" class="user-name"></span>
+          <button class="signout-btn" onclick="signOutGoogle()">Sign out</button>
+        </div>
+      </div>
     </div>
   </header>
+
+  <div id="auth-gate" class="auth-gate">
+    <div class="auth-card">
+      <h2><i class="ti ti-lock" style="color:var(--accent);margin-right:8px;"></i>Google Sign-In Required</h2>
+      <p>Sign in with Google to unlock your portfolio dashboard and AI analysis tools.</p>
+      <p>Use <strong>Google Setup</strong> in the top-right to save your Google OAuth Client ID if the sign-in button is not visible.</p>
+      <div class="auth-steps">
+        1. Open Google Cloud Console and create an OAuth 2.0 Web Client ID.<br>
+        2. Add your app origin to Authorized JavaScript origins.<br>
+        3. Save the Client ID in Google Setup, then sign in.
+      </div>
+    </div>
+  </div>
 
   <!-- API KEY MODAL -->
   <div class="modal-overlay" id="api-modal">
@@ -462,6 +539,21 @@
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeApiModal()">Cancel</button>
         <button class="btn-primary" onclick="saveApiKey()"><i class="ti ti-check" style="margin-right:4px"></i>Save Key</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="google-modal">
+    <div class="modal">
+      <h3><i class="ti ti-brand-google" style="margin-right:8px;color:var(--accent)"></i>Google OAuth Client ID</h3>
+      <p>
+        Save your Google OAuth 2.0 Web Client ID locally to enable Google authentication for this app.
+      </p>
+      <input type="text" id="google-client-id-input" placeholder="1234567890-abc123def456.apps.googleusercontent.com" />
+      <p style="font-size:12px;color:var(--text3);">Stored only in your browser localStorage.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeGoogleModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveGoogleClientId()"><i class="ti ti-check" style="margin-right:4px"></i>Save Client ID</button>
       </div>
     </div>
   </div>
@@ -940,6 +1032,182 @@ let holdings = [
   { ticker:'GOOGL', shares:8,  cost:155,  price:172.30, signal:'buy'  },
 ];
 let chatHistory = [];
+let googleInitAttempts = 0;
+let googleUser = null;
+
+const GOOGLE_CLIENT_ID_KEY = 'alphaagent_google_client_id';
+const GOOGLE_USER_KEY = 'alphaagent_google_user';
+
+/* ── GOOGLE AUTH ── */
+function getGoogleClientId() { return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ''; }
+
+function openGoogleModal() {
+  document.getElementById('google-client-id-input').value = getGoogleClientId();
+  document.getElementById('google-modal').classList.add('open');
+}
+
+function closeGoogleModal() {
+  document.getElementById('google-modal').classList.remove('open');
+}
+
+function saveGoogleClientId() {
+  const value = document.getElementById('google-client-id-input').value.trim();
+  if (!value) {
+    alert('Please enter a valid Google OAuth Client ID.');
+    return;
+  }
+  localStorage.setItem(GOOGLE_CLIENT_ID_KEY, value);
+  closeGoogleModal();
+  googleInitAttempts = 0;
+  initializeGoogleAuth();
+}
+
+function parseJwtPayload(token) {
+  try {
+    const payload = token.split('.')[1];
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(normalized);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function setAuthLock(locked) {
+  document.body.classList.toggle('auth-locked', locked);
+}
+
+function isAuthenticated() {
+  return !!googleUser;
+}
+
+function applyGoogleUser(user) {
+  googleUser = user;
+  if (user) {
+    localStorage.setItem(GOOGLE_USER_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(GOOGLE_USER_KEY);
+  }
+  updateAuthUi();
+}
+
+function hydrateGoogleUser() {
+  const raw = localStorage.getItem(GOOGLE_USER_KEY);
+  if (!raw) return;
+  try {
+    googleUser = JSON.parse(raw);
+  } catch {
+    googleUser = null;
+    localStorage.removeItem(GOOGLE_USER_KEY);
+  }
+}
+
+function updateAuthUi() {
+  const chip = document.getElementById('user-chip');
+  const signIn = document.getElementById('google-signin-btn');
+  const hint = document.getElementById('google-auth-hint');
+
+  if (googleUser) {
+    chip.classList.add('open');
+    document.getElementById('user-name').textContent = googleUser.name || googleUser.email || 'Signed in';
+    document.getElementById('user-avatar').src = googleUser.picture || '';
+    signIn.style.display = 'none';
+    hint.textContent = googleUser.email || '';
+    setAuthLock(false);
+  } else {
+    chip.classList.remove('open');
+    document.getElementById('user-name').textContent = '';
+    document.getElementById('user-avatar').removeAttribute('src');
+    signIn.style.display = 'block';
+    setAuthLock(true);
+  }
+}
+
+function onGoogleCredential(response) {
+  if (!response || !response.credential) {
+    alert('Google sign-in failed. Please try again.');
+    return;
+  }
+  const payload = parseJwtPayload(response.credential);
+  if (!payload) {
+    alert('Unable to read Google account data. Please try again.');
+    return;
+  }
+
+  applyGoogleUser({
+    sub: payload.sub,
+    name: payload.name,
+    email: payload.email,
+    picture: payload.picture,
+    givenName: payload.given_name
+  });
+}
+
+function initializeGoogleAuth() {
+  const hint = document.getElementById('google-auth-hint');
+  const btnContainer = document.getElementById('google-signin-btn');
+  const clientId = getGoogleClientId();
+
+  if (!clientId) {
+    hint.textContent = 'Add your Google Client ID in Google Setup.';
+    btnContainer.innerHTML = '';
+    updateAuthUi();
+    return;
+  }
+
+  if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+    googleInitAttempts += 1;
+    hint.textContent = 'Loading Google authentication...';
+    if (googleInitAttempts < 12) {
+      setTimeout(initializeGoogleAuth, 300);
+    } else {
+      hint.textContent = 'Google auth script did not load. Refresh and try again.';
+    }
+    return;
+  }
+
+  googleInitAttempts = 0;
+  hint.textContent = '';
+  btnContainer.innerHTML = '';
+
+  window.google.accounts.id.initialize({
+    client_id: clientId,
+    callback: onGoogleCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  });
+
+  window.google.accounts.id.renderButton(btnContainer, {
+    theme: 'outline',
+    size: 'large',
+    shape: 'pill',
+    text: 'signin_with',
+    width: 230
+  });
+
+  if (!googleUser) {
+    window.google.accounts.id.prompt();
+  }
+
+  updateAuthUi();
+}
+
+function signOutGoogle() {
+  const email = googleUser && googleUser.email;
+  applyGoogleUser(null);
+
+  if (window.google && window.google.accounts && window.google.accounts.id) {
+    window.google.accounts.id.disableAutoSelect();
+    if (email) {
+      window.google.accounts.id.revoke(email, () => {
+        initializeGoogleAuth();
+      });
+      return;
+    }
+  }
+
+  initializeGoogleAuth();
+}
 
 /* ── API KEY ── */
 function getApiKey() { return localStorage.getItem('alphaagent_apikey') || ''; }
@@ -960,6 +1228,9 @@ function checkApiKey() {
 }
 document.getElementById('api-modal').addEventListener('click', function(e) {
   if (e.target === this) closeApiModal();
+});
+document.getElementById('google-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeGoogleModal();
 });
 
 /* ── TABS ── */
@@ -1109,6 +1380,11 @@ function quickAsk(text) {
 }
 
 async function sendAnalysis(text) {
+  if (!isAuthenticated()) {
+    appendMsg('assistant', 'Please sign in with Google first to use portfolio analysis and AI chat.');
+    return;
+  }
+
   const apiKey = getApiKey();
   checkApiKey();
   if (!apiKey) {
@@ -1271,6 +1547,9 @@ function initCharts() {
 }
 
 /* ── INIT ── */
+hydrateGoogleUser();
+updateAuthUi();
+initializeGoogleAuth();
 renderHoldings();
 checkApiKey();
 window.addEventListener('load', initCharts);
