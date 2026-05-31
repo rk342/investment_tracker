@@ -72,4 +72,16 @@ investment_tracker/
 1. On load, the app reads any cached Google user profile from `localStorage`.
 2. If no session exists, the app locks (nav/content hidden) and shows the sign-in gate.
 3. After successful Google sign-in, the credential JWT is parsed client-side to extract name, email, and avatar.
-4. Signing out clears the session and revokes the Google token.
+4. The app checks the signed-in email against a hard-coded allowlist. Only authorized email addresses may sign in.
+5. Signing out clears the session and revokes the Google token.
+
+## Authorized Users
+
+To restrict access, update the `ALLOWED_EMAILS` array in `index.html` with the exact authorized Google email addresses.
+
+```js
+const ALLOWED_EMAILS = [
+  'alice@example.com',
+  'bob@example.com'
+];
+```

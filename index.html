@@ -1037,6 +1037,10 @@ let googleUser = null;
 
 const GOOGLE_CLIENT_ID_KEY = 'alphaagent_google_client_id';
 const GOOGLE_USER_KEY = 'alphaagent_google_user';
+const ALLOWED_EMAILS = [
+  'rkochhar@gmail.com',
+  'rekha.kochhar@gmail.com'
+];
 
 /* ── GOOGLE AUTH ── */
 function getGoogleClientId() { return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ''; }
@@ -1079,6 +1083,10 @@ function setAuthLock(locked) {
 
 function isAuthenticated() {
   return !!googleUser;
+}
+
+function isEmailAllowed(email) {
+  return email && ALLOWED_EMAILS.includes(email.toLowerCase());
 }
 
 function applyGoogleUser(user) {
@@ -1131,6 +1139,13 @@ function onGoogleCredential(response) {
   const payload = parseJwtPayload(response.credential);
   if (!payload) {
     alert('Unable to read Google account data. Please try again.');
+    return;
+  }
+
+  const email = (payload.email || '').toLowerCase();
+  if (!isEmailAllowed(email)) {
+    alert('Access denied. This app is restricted to authorized email addresses only.');
+    applyGoogleUser(null);
     return;
   }
 
