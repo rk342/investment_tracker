@@ -1052,7 +1052,7 @@ async function apiRequest(path, method = 'GET', payload = null) {
 }
 async function loadBackendData() {
   if (!BACKEND_API_URL || !googleUser) return;
-  const result = await apiRequest('/user', 'GET');
+  const result = await apiRequest('/api/user', 'GET');
   if (!result) return;
   if (Array.isArray(result.holdings) && result.holdings.length) {
     holdings = result.holdings;
@@ -1065,7 +1065,7 @@ async function loadBackendData() {
 }
 async function saveBackendData() {
   if (!BACKEND_API_URL || !googleUser) return;
-  await apiRequest('/user', 'POST', { holdings, watchlist });
+  await apiRequest('/api/user', 'POST', { holdings, watchlist });
 }
 function renderWatchlist() {
   const container = document.getElementById('watchlist-items');
@@ -1194,7 +1194,7 @@ async function onGoogleCredential(response) {
     return;
   }
 
-  const authResponse = await fetch(`${BACKEND_API_URL}/auth`, {
+  const authResponse = await fetch(`${BACKEND_API_URL}/api/auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id_token: response.credential })
