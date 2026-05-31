@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AlphaAgent — AI Investment Intelligence</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2230;
+    --bg4: #21262d;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --green: #3fb950;
+    --green-bg: rgba(63,185,80,0.1);
+    --green-text: #56d364;
+    --red: #f85149;
+    --red-bg: rgba(248,81,73,0.1);
+    --red-text: #ff7b72;
+    --blue: #58a6ff;
+    --blue-bg: rgba(88,166,255,0.1);
+    --blue-text: #79c0ff;
+    --amber: #d29922;
+    --amber-bg: rgba(210,153,34,0.1);
+    --amber-text: #e3b341;
+    --purple: #8b5cf6;
+    --purple-bg: rgba(139,92,246,0.1);
+    --purple-text: #a78bfa;
+    --teal: #2dd4bf;
+    --teal-bg: rgba(45,212,191,0.08);
+    --accent: #4fd1a5;
+    --accent-dark: #1a2e4a;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── LAYOUT ── */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent-dark), #1e3a5f);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(79,209,165,0.3);
+  }
+  .logo i { color: var(--accent); font-size: 20px; }
+  .brand-name { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  .brand-sub { font-size: 11px; color: var(--text3); letter-spacing: 0.05em; text-transform: uppercase; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .status-badge {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px;
+    background: var(--green-bg); border: 1px solid rgba(63,185,80,0.3);
+    font-size: 12px; color: var(--green-text); font-weight: 500;
+  }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(0.85)} }
+  .api-key-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: var(--radius); cursor: pointer;
+    background: var(--bg4); border: 1px solid var(--border2);
+    color: var(--text2); font-size: 12px; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .api-key-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 28px; width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
+  .modal input {
+    width: 100%; padding: 10px 14px; border-radius: var(--radius);
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); font-size: 13px; font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 12px; outline: none;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-primary {
+    padding: 8px 18px; border-radius: var(--radius); cursor: pointer;
+    background: var(--accent-dark); border: 1px solid rgba(79,209,165,0.4);
+    color: var(--accent); font-size: 13px; font-weight: 500; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-primary:hover { background: #1e3a5f; }
+  .btn-secondary {
+    padding: 8px 18px; border-radius: var(--radius); cursor: pointer;
+    background: transparent; border: 1px solid var(--border2);
+    color: var(--text2); font-size: 13px; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--border2); background: var(--bg4); }
+
+  /* ── NAV ── */
+  .nav {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 0 24px; display: flex; gap: 2px; overflow-x: auto;
+  }
+  .nav-btn {
+    padding: 14px 16px; cursor: pointer; white-space: nowrap;
+    border: none; background: transparent;
+    color: var(--text3); font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 7px;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .nav-btn:hover { color: var(--text2); }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .nav-btn i { font-size: 16px; }
+
+  /* ── MAIN CONTENT ── */
+  .content {
+    flex: 1; padding: 24px; max-width: 1200px;
+    margin: 0 auto; width: 100%;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  /* ── TABS ── */
+  .tab-content { display: none; flex-direction: column; gap: 20px; }
+  .tab-content.active { display: flex; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title i { font-size: 16px; color: var(--text2); }
+  .card-body { padding: 20px; }
+
+  /* ── METRICS ── */
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .metric-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px 20px;
+  }
+  .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); font-weight: 500; margin-bottom: 8px; }
+  .metric-value { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+  .metric-change { font-size: 12px; color: var(--text2); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+  .up { color: var(--green-text); }
+  .down { color: var(--red-text); }
+  .neutral { color: var(--text2); }
+
+  /* ── GRID LAYOUTS ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3-1 { display: grid; grid-template-columns: 1.8fr 1fr; gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text3); font-weight: 500;
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .mono { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.03em; text-transform: uppercase;
+  }
+  .badge-buy    { background: var(--green-bg); color: var(--green-text); border: 1px solid rgba(63,185,80,0.25); }
+  .badge-sell   { background: var(--red-bg);   color: var(--red-text);   border: 1px solid rgba(248,81,73,0.25); }
+  .badge-hold   { background: var(--amber-bg); color: var(--amber-text); border: 1px solid rgba(210,153,34,0.25); }
+  .badge-option { background: var(--purple-bg);color: var(--purple-text);border: 1px solid rgba(139,92,246,0.25); }
+  .badge-short  { background: var(--red-bg);   color: var(--red-text);   border: 1px solid rgba(248,81,73,0.25); }
+  .badge-watch  { background: var(--blue-bg);  color: var(--blue-text);  border: 1px solid rgba(88,166,255,0.25); }
+
+  /* ── ICON BUTTON ── */
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg3);
+    color: var(--text2); display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-size: 15px;
+  }
+  .icon-btn:hover { border-color: var(--border2); color: var(--text); background: var(--bg4); }
+
+  /* ── CHIP BUTTONS ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip {
+    padding: 6px 13px; border-radius: 20px; cursor: pointer;
+    border: 1px solid var(--border2); background: var(--bg3);
+    color: var(--text2); font-size: 12px; font-weight: 500; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--teal-bg); }
+
+  /* ── AI CHAT ── */
+  .chat-wrap { display: flex; flex-direction: column; }
+  .messages {
+    min-height: 200px; max-height: 440px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 14px;
+    padding: 4px 0 14px; scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.user-msg { flex-direction: row-reverse; }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .ai-av { background: var(--accent-dark); border: 1px solid rgba(79,209,165,0.3); }
+  .ai-av i { color: var(--accent); font-size: 15px; }
+  .user-av { background: var(--bg4); border: 1px solid var(--border2); color: var(--text2); font-size: 11px; font-weight: 600; }
+  .bubble {
+    max-width: 82%; padding: 12px 16px;
+    font-size: 13px; line-height: 1.7;
+    border-radius: 4px 14px 14px 14px;
+  }
+  .ai-bubble { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 4px 14px 14px 14px; }
+  .user-bubble { background: var(--bg4); border: 1px solid var(--border2); color: var(--text); border-radius: 14px 4px 14px 14px; }
+  .bubble strong { color: var(--accent); font-weight: 600; }
+  .bubble em { color: var(--text2); font-style: normal; }
+  .bubble h4 { font-size: 13px; font-weight: 600; margin: 10px 0 4px; color: var(--accent); }
+  .bubble ul { padding-left: 18px; margin: 6px 0; }
+  .bubble li { margin-bottom: 3px; }
+
+  .loading-bubble { display: flex; align-items: center; gap: 10px; }
+  .dots span {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); margin: 0 2px;
+    animation: dotbounce 1.3s infinite;
+  }
+  .dots span:nth-child(2) { animation-delay: .2s; }
+  .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes dotbounce { 0%,80%,100%{transform:scale(0.5);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+  .chat-input-row {
+    display: flex; gap: 10px; padding-top: 14px;
+    border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .chat-textarea {
+    flex: 1; padding: 10px 14px; border-radius: var(--radius);
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); font-size: 13px; resize: none;
+    min-height: 42px; max-height: 120px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none; transition: border-color 0.15s;
+  }
+  .chat-textarea:focus { border-color: var(--accent); }
+  .send-btn {
+    padding: 10px 20px; border-radius: var(--radius); cursor: pointer;
+    background: var(--accent-dark); border: 1px solid rgba(79,209,165,0.35);
+    color: var(--accent); font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .send-btn:hover { background: #1e3a5f; }
+  .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── PORTFOLIO FORM ── */
+  .add-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .add-row input {
+    padding: 8px 12px; border-radius: var(--radius);
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); font-size: 13px; font-family: inherit;
+    outline: none; flex: 1; min-width: 80px;
+  }
+  .add-row input:focus { border-color: var(--accent); }
+  .add-row input::placeholder { color: var(--text3); }
+  .add-btn {
+    padding: 8px 14px; border-radius: var(--radius); cursor: pointer;
+    background: var(--accent-dark); border: 1px solid rgba(79,209,165,0.3);
+    color: var(--accent); font-size: 12px; font-weight: 600;
+    white-space: nowrap; font-family: inherit; transition: all 0.15s;
+  }
+  .add-btn:hover { background: #1e3a5f; }
+
+  /* ── PROGRESS BARS ── */
+  .progress-item { margin-bottom: 14px; }
+  .progress-item:last-child { margin-bottom: 0; }
+  .progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .progress-labels span:last-child { font-weight: 500; color: var(--text); }
+  .progress-bg { height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .fill-green  { background: var(--green); }
+  .fill-blue   { background: var(--blue); }
+  .fill-purple { background: var(--purple); }
+  .fill-amber  { background: var(--amber); }
+
+  /* ── INCOME STRATEGY ── */
+  .strategy-item {
+    padding: 14px 16px; border-radius: var(--radius);
+    background: var(--bg3); border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .strategy-item:last-child { margin-bottom: 0; }
+  .strategy-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .strategy-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .strategy-detail { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .strategy-stats { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+  .stat-item { font-size: 12px; }
+  .stat-label { color: var(--text3); }
+  .stat-val { color: var(--text); font-weight: 500; font-family: 'IBM Plex Mono', monospace; }
+
+  /* ── CHART WRAPPER ── */
+  .chart-container { position: relative; width: 100%; }
+
+  /* ── RECOMMENDATION CARD ── */
+  .rec-item {
+    padding: 14px 16px; border-radius: var(--radius);
+    background: var(--bg3); border: 1px solid var(--border);
+    margin-bottom: 10px; transition: border-color 0.15s;
+  }
+  .rec-item:hover { border-color: var(--border2); }
+  .rec-item:last-child { margin-bottom: 0; }
+  .rec-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .rec-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; }
+  .rec-reason { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .rec-meta { display: flex; gap: 12px; margin-top: 8px; }
+  .rec-stat { font-size: 11px; color: var(--text3); }
+  .rec-stat span { color: var(--text2); font-weight: 500; }
+
+  /* ── WATCHLIST ── */
+  .watch-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .watch-item:last-child { border-bottom: none; }
+  .watch-left { display: flex; align-items: center; gap: 12px; }
+  .watch-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; min-width: 60px; }
+  .watch-note { font-size: 12px; color: var(--text2); }
+  .small-chip {
+    padding: 4px 10px; border-radius: 20px; cursor: pointer;
+    border: 1px solid var(--border2); background: transparent;
+    color: var(--text3); font-size: 11px; font-weight: 500; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .small-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── API KEY NOTICE ── */
+  .api-notice {
+    padding: 14px 16px; border-radius: var(--radius);
+    background: var(--amber-bg); border: 1px solid rgba(210,153,34,0.3);
+    font-size: 13px; color: var(--amber-text); line-height: 1.6;
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .api-notice i { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .api-link { color: var(--accent); text-decoration: none; font-weight: 500; }
+  .api-link:hover { text-decoration: underline; }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text3); font-weight: 600; margin-bottom: 10px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center; padding: 20px;
+    font-size: 11px; color: var(--text3);
+    border-top: 1px solid var(--border);
+  }
+  .footer a { color: var(--text3); text-decoration: none; }
+  .footer a:hover { color: var(--text2); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3-1 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: repeat(2,1fr); }
+  }
+  @media (max-width: 600px) {
+    .content { padding: 14px; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .header { padding: 0 14px; }
+    .brand-sub { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo"><i class="ti ti-chart-candle"></i></div>
+      <div>
+        <div class="brand-name">AlphaAgent</div>
+        <div class="brand-sub">AI Investment Intelligence</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge"><span class="pulse"></span>AI Active</div>
+      <button class="api-key-btn" onclick="openApiModal()">
+        <i class="ti ti-key"></i> API Key
+      </button>
+    </div>
+  </header>
+
+  <!-- API KEY MODAL -->
+  <div class="modal-overlay" id="api-modal">
+    <div class="modal">
+      <h3><i class="ti ti-key" style="margin-right:8px;color:var(--accent)"></i>Enter Anthropic API Key</h3>
+      <p>
+        Your API key is stored locally in your browser and never sent anywhere except directly to <strong>api.anthropic.com</strong>.
+        Get a free key at <a href="https://console.anthropic.com" target="_blank" class="api-link">console.anthropic.com</a>.
+      </p>
+      <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." />
+      <p style="font-size:12px;color:var(--text3);">Your key is saved in localStorage — you won't need to re-enter it.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeApiModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveApiKey()"><i class="ti ti-check" style="margin-right:4px"></i>Save Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchTab('portfolio')" id="nav-portfolio">
+      <i class="ti ti-layout-dashboard"></i>Portfolio
+    </button>
+    <button class="nav-btn" onclick="switchTab('analysis')" id="nav-analysis">
+      <i class="ti ti-brain"></i>AI Analysis
+    </button>
+    <button class="nav-btn" onclick="switchTab('income')" id="nav-income">
+      <i class="ti ti-cash"></i>Income
+    </button>
+    <button class="nav-btn" onclick="switchTab('watchlist')" id="nav-watchlist">
+      <i class="ti ti-eye"></i>Watchlist
+    </button>
+    <button class="nav-btn" onclick="switchTab('performance')" id="nav-performance">
+      <i class="ti ti-chart-line"></i>Performance
+    </button>
+  </nav>
+
+  <main class="content">
+
+    <!-- ══════════ PORTFOLIO TAB ══════════ -->
+    <section id="tab-portfolio" class="tab-content active">
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Total Portfolio Value</div>
+          <div class="metric-value" id="total-val">$52,480</div>
+          <div class="metric-change up"><i class="ti ti-trending-up" style="font-size:13px"></i>&nbsp;+$1,480 this month</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Monthly Return</div>
+          <div class="metric-value up" id="monthly-ret">+2.9%</div>
+          <div class="metric-change up"><i class="ti ti-check" style="font-size:13px"></i>&nbsp;Above 2% target</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Options Income</div>
+          <div class="metric-value">$320</div>
+          <div class="metric-change neutral">Covered calls + CSPs</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Unrealized P&L</div>
+          <div class="metric-value up">+$3,240</div>
+          <div class="metric-change up">+6.6% on cost basis</div>
+        </div>
+      </div>
+
+      <div class="grid-3-1">
+        <!-- Holdings Table -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-table"></i>Holdings</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div class="add-row" style="margin:0;">
+                <input type="text" id="new-ticker" placeholder="Ticker" style="width:80px;text-transform:uppercase;" />
+                <input type="number" id="new-shares" placeholder="Shares" style="width:70px;" />
+                <input type="number" id="new-cost" placeholder="Avg Cost" style="width:85px;" />
+                <input type="number" id="new-price" placeholder="Curr Price" style="width:95px;" />
+                <button class="add-btn" onclick="addHolding()"><i class="ti ti-plus"></i> Add</button>
+              </div>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Shares</th>
+                  <th>Avg Cost</th>
+                  <th>Price</th>
+                  <th>Value</th>
+                  <th>P&L</th>
+                  <th>Signal</th>
+                  <th>AI</th>
+                </tr>
+              </thead>
+              <tbody id="holdings-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- AI Recommendations -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-sparkles"></i>AI Picks</div>
+            <button class="icon-btn" onclick="quickAsk('Based on my current portfolio, give me your top 3 trade recommendations right now — what to buy, sell, or trade options on.')">
+              <i class="ti ti-refresh"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="ai-picks">
+              <div class="rec-item">
+                <div class="rec-top"><span class="rec-ticker">NVDA</span><span class="badge badge-buy">Buy</span></div>
+                <div class="rec-reason">AI chip demand surge — momentum breakout above $125 with strong institutional support. Target $145.</div>
+                <div class="rec-meta">
+                  <div class="rec-stat">Entry <span>$128–132</span></div>
+                  <div class="rec-stat">Target <span>$145</span></div>
+                  <div class="rec-stat">Stop <span>$120</span></div>
+                </div>
+              </div>
+              <div class="rec-item">
+                <div class="rec-top"><span class="rec-ticker">GOOGL</span><span class="badge badge-buy">Buy</span></div>
+                <div class="rec-reason">Cloud + AI ad revenue accelerating. Support at $168 is holding. Strong Q1 beat.</div>
+                <div class="rec-meta">
+                  <div class="rec-stat">Entry <span>$168–172</span></div>
+                  <div class="rec-stat">Target <span>$190</span></div>
+                  <div class="rec-stat">Stop <span>$162</span></div>
+                </div>
+              </div>
+              <div class="rec-item">
+                <div class="rec-top"><span class="rec-ticker">AAPL CC</span><span class="badge badge-option">Options</span></div>
+                <div class="rec-reason">Sell $200 Jun covered call for ~$1.45 premium while stock consolidates below resistance.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly Goal -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="ti ti-target"></i>Monthly Goal Tracker — 2% target ($1,049)</div>
+        </div>
+        <div class="card-body">
+          <div class="grid-4">
+            <div class="progress-item" style="grid-column:1/-1;">
+              <div class="progress-labels">
+                <span>Total progress toward 2% monthly goal</span>
+                <span class="up">$1,800 / $1,049 (172%)</span>
+              </div>
+              <div class="progress-bg"><div class="progress-fill fill-green" style="width:100%"></div></div>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top:16px;">
+            <div>
+              <div class="progress-item">
+                <div class="progress-labels"><span>Capital gains</span><span>+$1,440</span></div>
+                <div class="progress-bg"><div class="progress-fill fill-blue" style="width:80%"></div></div>
+              </div>
+              <div class="progress-item">
+                <div class="progress-labels"><span>Covered call premium</span><span>$243</span></div>
+                <div class="progress-bg"><div class="progress-fill fill-purple" style="width:46%"></div></div>
+              </div>
+            </div>
+            <div>
+              <div class="progress-item">
+                <div class="progress-labels"><span>Cash-secured put premium</span><span>$77</span></div>
+                <div class="progress-bg"><div class="progress-fill fill-amber" style="width:25%"></div></div>
+              </div>
+              <div class="progress-item">
+                <div class="progress-labels"><span>Dividends</span><span>$40</span></div>
+                <div class="progress-bg"><div class="progress-fill fill-green" style="width:15%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ══════════ AI ANALYSIS TAB ══════════ -->
+    <section id="tab-analysis" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="ti ti-robot"></i>AI Investment Analyst</div>
+          <div class="status-badge"><span class="pulse"></span>Live Analysis</div>
+        </div>
+        <div class="card-body">
+          <div id="api-notice" class="api-notice" style="display:none;">
+            <i class="ti ti-alert-triangle"></i>
+            <div>No API key set. Click <strong>API Key</strong> in the top-right to add your Anthropic key.
+            Get one free at <a href="https://console.anthropic.com" target="_blank" class="api-link">console.anthropic.com</a>.</div>
+          </div>
+          <div class="chips" id="quick-chips">
+            <button class="chip" onclick="quickAsk('Analyze my entire portfolio in detail. Which positions should I add to, reduce, or exit? Give me specific price targets and reasoning.')">📊 Full portfolio analysis</button>
+            <button class="chip" onclick="quickAsk('What are the best covered call strikes and expirations I should sell right now on my holdings to maximize premium income this month?')">💰 Best covered calls now</button>
+            <button class="chip" onclick="quickAsk('What specific trades should I make RIGHT NOW to hit a 2% return by end of this month? Be specific with entries, exits, and position sizes.')">🎯 Hit 2% this month</button>
+            <button class="chip" onclick="quickAsk('Identify 3-5 strong short candidates in the current market. Give ticker, entry, target, stop, and thesis for each.')">📉 Short candidates</button>
+            <button class="chip" onclick="quickAsk('Which high-growth stocks should I buy now for maximum appreciation over the next 3-6 months? Focus on AI, tech, and momentum.')">🚀 Growth stock picks</button>
+            <button class="chip" onclick="quickAsk('Analyze current market risks — macro, sector rotation, technical — and tell me how to reposition my portfolio to reduce downside while keeping upside.')">🛡️ Risk management</button>
+            <button class="chip" onclick="quickAsk('Set up a wheel strategy for me using my current holdings. Which stocks and what strikes/expirations for maximum income?')">⚙️ Wheel strategy setup</button>
+            <button class="chip" onclick="quickAsk('What put options should I buy for portfolio protection right now? Give me specific hedge positions with cost and protection levels.')">🔒 Hedge my portfolio</button>
+          </div>
+          <div class="chat-wrap">
+            <div class="messages" id="messages">
+              <div class="msg">
+                <div class="avatar ai-av"><i class="ti ti-robot"></i></div>
+                <div class="bubble ai-bubble">
+                  <strong>Welcome to AlphaAgent.</strong> I'm your AI investment analyst with full context of your portfolio.<br><br>
+                  I can help you with:<br>
+                  • <strong>Trade recommendations</strong> — buy, sell, hold with specific price targets<br>
+                  • <strong>Options strategies</strong> — covered calls, CSPs, spreads, wheel strategy<br>
+                  • <strong>Short ideas</strong> — bearish thesis with entry/stop/target<br>
+                  • <strong>Monthly income</strong> — strategies to generate consistent 2%+ monthly returns<br>
+                  • <strong>Risk management</strong> — hedges, position sizing, macro awareness<br><br>
+                  Click a quick analysis button above or ask me anything about your investments.
+                </div>
+              </div>
+            </div>
+            <div class="chat-input-row">
+              <textarea class="chat-textarea" id="chat-input" placeholder="Ask anything — e.g. 'Should I roll my AAPL calls up?' or 'What's the best earnings play this week?'" rows="1" onkeydown="handleEnter(event)"></textarea>
+              <button class="send-btn" id="send-btn" onclick="sendMessage()">
+                <i class="ti ti-send"></i>Analyze
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ INCOME TAB ══════════ -->
+    <section id="tab-income" class="tab-content">
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Monthly Premium Target</div>
+          <div class="metric-value">$524</div>
+          <div class="metric-change neutral">1% of portfolio</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Collected This Month</div>
+          <div class="metric-value up">$320</div>
+          <div class="metric-change up">61% of target</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Open Contracts</div>
+          <div class="metric-value">4</div>
+          <div class="metric-change neutral">3 calls · 1 put</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Annualized Yield</div>
+          <div class="metric-value">7.3%</div>
+          <div class="metric-change up">From options premium</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-chart-arrows"></i>Active Options Positions</div>
+          </div>
+          <div class="card-body">
+            <div class="strategy-item">
+              <div class="strategy-top">
+                <div class="strategy-name"><span class="badge badge-option">Covered Call</span> AAPL $200 Call</div>
+                <div style="font-size:12px;color:var(--green-text);font-weight:600;">+$145</div>
+              </div>
+              <div class="strategy-detail">Expiry: Jun 20 · 20 DTE · 1 contract (100 shares)</div>
+              <div class="strategy-stats">
+                <div class="stat-item"><span class="stat-label">Strike </span><span class="stat-val">$200</span></div>
+                <div class="stat-item"><span class="stat-label">Delta </span><span class="stat-val">0.28</span></div>
+                <div class="stat-item"><span class="stat-label">IV Rank </span><span class="stat-val">42%</span></div>
+                <div class="stat-item"><span class="stat-label">BEP </span><span class="stat-val">$197.20</span></div>
+              </div>
+            </div>
+            <div class="strategy-item">
+              <div class="strategy-top">
+                <div class="strategy-name"><span class="badge badge-option">Covered Call</span> MSFT $450 Call</div>
+                <div style="font-size:12px;color:var(--green-text);font-weight:600;">+$98</div>
+              </div>
+              <div class="strategy-detail">Expiry: Jun 20 · 20 DTE · 1 contract</div>
+              <div class="strategy-stats">
+                <div class="stat-item"><span class="stat-label">Strike </span><span class="stat-val">$450</span></div>
+                <div class="stat-item"><span class="stat-label">Delta </span><span class="stat-val">0.24</span></div>
+                <div class="stat-item"><span class="stat-label">IV Rank </span><span class="stat-val">38%</span></div>
+                <div class="stat-item"><span class="stat-label">BEP </span><span class="stat-val">$424.02</span></div>
+              </div>
+            </div>
+            <div class="strategy-item">
+              <div class="strategy-top">
+                <div class="strategy-name"><span class="badge badge-option">Cash-Secured Put</span> NVDA $115</div>
+                <div style="font-size:12px;color:var(--green-text);font-weight:600;">+$77</div>
+              </div>
+              <div class="strategy-detail">Expiry: Jun 27 · 27 DTE · 1 contract</div>
+              <div class="strategy-stats">
+                <div class="stat-item"><span class="stat-label">Strike </span><span class="stat-val">$115</span></div>
+                <div class="stat-item"><span class="stat-label">Delta </span><span class="stat-val">-0.20</span></div>
+                <div class="stat-item"><span class="stat-label">IV Rank </span><span class="stat-val">55%</span></div>
+                <div class="stat-item"><span class="stat-label">Cash req </span><span class="stat-val">$11,500</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-bulb"></i>Generate New Income Trades</div>
+          </div>
+          <div class="card-body">
+            <div class="chips">
+              <button class="chip" onclick="quickAsk('Suggest covered calls I should sell on my current holdings this week. Give specific strikes and expirations optimized for premium vs assignment risk.');switchTab('analysis')">New covered calls</button>
+              <button class="chip" onclick="quickAsk('What cash-secured puts should I sell right now to generate income and potentially acquire quality stocks at a discount?');switchTab('analysis')">Cash-secured puts</button>
+              <button class="chip" onclick="quickAsk('Design a complete wheel strategy for me. Which of my stocks are best for it, and what are the exact first trades to initiate?');switchTab('analysis')">Wheel strategy</button>
+              <button class="chip" onclick="quickAsk('Suggest an iron condor or credit spread setup for this month that generates income with defined risk.');switchTab('analysis')">Credit spreads</button>
+            </div>
+            <div style="margin-top:16px;">
+              <div class="section-label">How the wheel strategy works</div>
+              <div class="strategy-item">
+                <div class="strategy-name" style="margin-bottom:8px;">Step 1 — Sell Cash-Secured Put</div>
+                <div class="strategy-detail">Sell an OTM put at a strike you'd be happy owning. Collect premium. If not assigned, repeat.</div>
+              </div>
+              <div class="strategy-item">
+                <div class="strategy-name" style="margin-bottom:8px;">Step 2 — Get Assigned, Own Shares</div>
+                <div class="strategy-detail">If put is exercised, buy shares at your strike. Your effective cost = strike − premium collected.</div>
+              </div>
+              <div class="strategy-item">
+                <div class="strategy-name" style="margin-bottom:8px;">Step 3 — Sell Covered Call</div>
+                <div class="strategy-detail">Sell OTM call against your shares. Collect more premium. If called away, start again.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ WATCHLIST TAB ══════════ -->
+    <section id="tab-watchlist" class="tab-content">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-eye"></i>Watch List</div>
+          </div>
+          <div class="card-body" style="padding-bottom:0;">
+            <div class="add-row">
+              <input type="text" id="watch-input" placeholder="Ticker (e.g. META)" style="text-transform:uppercase;width:120px;" />
+              <input type="text" id="watch-note-input" placeholder="Reason to watch" style="flex:1;" />
+              <button class="add-btn" onclick="addWatch()"><i class="ti ti-plus"></i> Add</button>
+            </div>
+          </div>
+          <div id="watchlist-items">
+            <div class="watch-item">
+              <div class="watch-left">
+                <div class="watch-ticker">META</div>
+                <div class="watch-note">AI ad revenue + VR monetization</div>
+              </div>
+              <button class="small-chip" onclick="quickAsk('Give me a detailed analysis of META stock. Should I buy it now? Include technicals, fundamentals, price targets, and any options play.');switchTab('analysis')">Analyze ↗</button>
+            </div>
+            <div class="watch-item">
+              <div class="watch-left">
+                <div class="watch-ticker">AMZN</div>
+                <div class="watch-note">AWS cloud growth + margin expansion</div>
+              </div>
+              <button class="small-chip" onclick="quickAsk('Give me a detailed analysis of AMZN stock. Should I buy it now? Include technicals, fundamentals, price targets, and any options play.');switchTab('analysis')">Analyze ↗</button>
+            </div>
+            <div class="watch-item">
+              <div class="watch-left">
+                <div class="watch-ticker">PLTR</div>
+                <div class="watch-note">Government + commercial AI contracts</div>
+              </div>
+              <button class="small-chip" onclick="quickAsk('Analyze PLTR stock in depth. Is it overvalued or does the AI government contract thesis justify current valuation? Buy, sell, or wait?');switchTab('analysis')">Analyze ↗</button>
+            </div>
+            <div class="watch-item">
+              <div class="watch-left">
+                <div class="watch-ticker">GLD</div>
+                <div class="watch-note">Inflation hedge / safe haven demand</div>
+              </div>
+              <button class="small-chip" onclick="quickAsk('Should I add GLD as a hedge in my portfolio? How much allocation makes sense given current macro environment?');switchTab('analysis')">Analyze ↗</button>
+            </div>
+            <div class="watch-item">
+              <div class="watch-left">
+                <div class="watch-ticker">TSM</div>
+                <div class="watch-note">Semiconductor foundry AI chip demand</div>
+              </div>
+              <button class="small-chip" onclick="quickAsk('Analyze TSM stock. Is this a good buy for AI chip exposure vs owning NVDA directly?');switchTab('analysis')">Analyze ↗</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-trending-down"></i>Short / Bearish Ideas</div>
+          </div>
+          <div class="card-body">
+            <div class="chips">
+              <button class="chip" onclick="quickAsk('Identify 5 strong short candidates right now. For each give: ticker, thesis, entry price, stop loss, target, and whether to short shares or buy puts.');switchTab('analysis')">🔍 Find short candidates</button>
+              <button class="chip" onclick="quickAsk('What put options should I buy for bearish bets this month? Suggest specific strikes and expirations with good risk/reward.');switchTab('analysis')">📉 Put options ideas</button>
+              <button class="chip" onclick="quickAsk('Which sectors or ETFs look most vulnerable to decline right now? Suggest inverse ETF plays or sector put spreads.');switchTab('analysis')">⚠️ Sector weakness plays</button>
+            </div>
+            <div id="short-ideas" style="margin-top:4px;">
+              <div class="rec-item" style="background:rgba(248,81,73,0.04);border-color:rgba(248,81,73,0.15);">
+                <div style="font-size:12px;color:var(--text2);line-height:1.6;">Click "Find short candidates" above to get AI-generated bearish ideas based on current market conditions, technical breakdowns, and fundamental deterioration.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ PERFORMANCE TAB ══════════ -->
+    <section id="tab-performance" class="tab-content">
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">YTD Return</div>
+          <div class="metric-value up">+14.2%</div>
+          <div class="metric-change up">vs S&P +11.8%</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Best Month</div>
+          <div class="metric-value up">+4.1%</div>
+          <div class="metric-change neutral">March 2026</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Win Rate</div>
+          <div class="metric-value">68%</div>
+          <div class="metric-change neutral">17 wins / 8 losses</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Avg Monthly</div>
+          <div class="metric-value up">+2.4%</div>
+          <div class="metric-change up">Above 2% target</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="ti ti-chart-line"></i>Monthly Returns vs 2% Target</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-container" style="height:260px;">
+            <canvas id="perf-chart" role="img" aria-label="Monthly portfolio returns bar chart showing performance vs 2% target from Jan to May 2026">Monthly returns Jan-May 2026: 1.8%, 2.9%, 4.1%, 2.2%, 2.9%</canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-chart-pie"></i>Portfolio Allocation</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:220px;">
+              <canvas id="alloc-chart" role="img" aria-label="Portfolio allocation pie chart">Holdings: AAPL 18%, MSFT 24%, NVDA 12%, SPY 25%, GOOGL 10%, Cash 11%</canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="ti ti-trophy"></i>Trade Log — Recent</div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Date</th><th>Ticker</th><th>Action</th><th>Return</th></tr></thead>
+              <tbody>
+                <tr><td>May 28</td><td class="mono">NVDA CC</td><td><span class="badge badge-option">Expired</span></td><td class="up">+$92</td></tr>
+                <tr><td>May 15</td><td class="mono">GOOGL</td><td><span class="badge badge-buy">Bought</span></td><td class="up">+3.2%</td></tr>
+                <tr><td>May 10</td><td class="mono">MSFT CC</td><td><span class="badge badge-option">Expired</span></td><td class="up">+$98</td></tr>
+                <tr><td>Apr 25</td><td class="mono">AAPL</td><td><span class="badge badge-hold">Held</span></td><td class="up">+1.8%</td></tr>
+                <tr><td>Apr 18</td><td class="mono">SPY CSP</td><td><span class="badge badge-option">Expired</span></td><td class="up">+$65</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>AlphaAgent — AI Investment Intelligence &nbsp;|&nbsp; For educational purposes only — not financial advice &nbsp;|&nbsp;
+    <a href="https://console.anthropic.com" target="_blank">Get Anthropic API Key</a></p>
+  </footer>
+</div>
+
+<script>
+/* ── STATE ── */
+let holdings = [
+  { ticker:'AAPL',  shares:20, cost:178,  price:194.50, signal:'hold' },
+  { ticker:'MSFT',  shares:15, cost:380,  price:425.80, signal:'hold' },
+  { ticker:'NVDA',  shares:10, cost:95,   price:130.20, signal:'buy'  },
+  { ticker:'SPY',   shares:25, cost:500,  price:528.40, signal:'hold' },
+  { ticker:'GOOGL', shares:8,  cost:155,  price:172.30, signal:'buy'  },
+];
+let chatHistory = [];
+
+/* ── API KEY ── */
+function getApiKey() { return localStorage.getItem('alphaagent_apikey') || ''; }
+function openApiModal() {
+  document.getElementById('api-key-input').value = getApiKey();
+  document.getElementById('api-modal').classList.add('open');
+}
+function closeApiModal() { document.getElementById('api-modal').classList.remove('open'); }
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (key) { localStorage.setItem('alphaagent_apikey', key); }
+  closeApiModal();
+  checkApiKey();
+}
+function checkApiKey() {
+  const notice = document.getElementById('api-notice');
+  if (notice) notice.style.display = getApiKey() ? 'none' : 'flex';
+}
+document.getElementById('api-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeApiModal();
+});
+
+/* ── TABS ── */
+function switchTab(tab) {
+  ['portfolio','analysis','income','watchlist','performance'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('nav-'+t).classList.toggle('active', t===tab);
+  });
+}
+
+/* ── HOLDINGS ── */
+function renderHoldings() {
+  const tbody = document.getElementById('holdings-tbody');
+  let totalVal = 0, totalCost = 0;
+  tbody.innerHTML = holdings.map(h => {
+    const val = h.shares * h.price;
+    const pl  = (h.price - h.cost) * h.shares;
+    const plPct = ((h.price - h.cost) / h.cost * 100).toFixed(1);
+    totalVal  += val;
+    totalCost += h.shares * h.cost;
+    const cls = pl >= 0 ? 'up' : 'down';
+    const sign = pl >= 0 ? '+' : '';
+    const sigClass = { buy:'badge-buy', sell:'badge-sell', hold:'badge-hold', option:'badge-option' }[h.signal] || 'badge-hold';
+    const sigLabel = { buy:'Buy', sell:'Sell', hold:'Hold', option:'Options' }[h.signal] || 'Hold';
+    return `<tr>
+      <td class="mono">${h.ticker}</td>
+      <td>${h.shares}</td>
+      <td>$${h.cost.toFixed(2)}</td>
+      <td>$${h.price.toFixed(2)}</td>
+      <td>$${Math.round(val).toLocaleString()}</td>
+      <td class="${cls}">${sign}$${Math.round(Math.abs(pl)).toLocaleString()} (${sign}${plPct}%)</td>
+      <td><span class="badge ${sigClass}">${sigLabel}</span></td>
+      <td><button class="small-chip" onclick="quickAskHolding('${h.ticker}',${h.shares},${h.cost},${h.price})">AI ↗</button></td>
+    </tr>`;
+  }).join('');
+  const totalPl = totalVal - totalCost;
+  const totalPlPct = (totalPl / totalCost * 100).toFixed(1);
+  const el = document.getElementById('total-val');
+  if (el) el.textContent = '$' + Math.round(totalVal).toLocaleString();
+}
+
+function quickAskHolding(t, shares, cost, price) {
+  const pl = ((price-cost)/cost*100).toFixed(1);
+  quickAsk(`Analyze ${t} in depth. I hold ${shares} shares at avg cost $${cost} (current $${price}, ${pl>0?'+':''}${pl}%). Should I add more, hold, sell, or write covered calls? Give me specific price targets and your recommendation.`);
+  switchTab('analysis');
+}
+
+function addHolding() {
+  const t = document.getElementById('new-ticker').value.trim().toUpperCase();
+  const s = parseFloat(document.getElementById('new-shares').value);
+  const c = parseFloat(document.getElementById('new-cost').value);
+  const p = parseFloat(document.getElementById('new-price').value);
+  if (!t || !s || !c || !p) { alert('Please fill in all fields: ticker, shares, avg cost, and current price.'); return; }
+  if (holdings.find(h => h.ticker === t)) { alert(t + ' is already in your portfolio.'); return; }
+  holdings.push({ ticker:t, shares:s, cost:c, price:p, signal:'hold' });
+  renderHoldings();
+  ['new-ticker','new-shares','new-cost','new-price'].forEach(id => document.getElementById(id).value = '');
+  quickAsk(`I just added ${t} to my portfolio: ${s} shares at $${c} avg cost. Analyze this position — should I have bought it? What's the outlook, price target, and should I use any options strategy on it?`);
+  switchTab('analysis');
+}
+
+/* ── WATCHLIST ── */
+function addWatch() {
+  const t = document.getElementById('watch-input').value.trim().toUpperCase();
+  const note = document.getElementById('watch-note-input').value.trim() || 'Added for analysis';
+  if (!t) return;
+  const div = document.createElement('div');
+  div.className = 'watch-item';
+  div.innerHTML = `
+    <div class="watch-left">
+      <div class="watch-ticker">${t}</div>
+      <div class="watch-note">${note}</div>
+    </div>
+    <button class="small-chip" onclick="quickAsk('Analyze ${t} stock in depth. Should I buy it? Give me technicals, fundamentals, price target, and any options strategy.');switchTab('analysis')">Analyze ↗</button>
+  `;
+  document.getElementById('watchlist-items').appendChild(div);
+  document.getElementById('watch-input').value = '';
+  document.getElementById('watch-note-input').value = '';
+}
+
+/* ── CHAT ── */
+function buildPortfolioContext() {
+  const lines = holdings.map(h => {
+    const pl = ((h.price-h.cost)/h.cost*100).toFixed(1);
+    return `  ${h.ticker}: ${h.shares} shares, avg cost $${h.cost}, current price $${h.price}, P&L ${pl>0?'+':''}${pl}%`;
+  }).join('\n');
+  const totalVal = holdings.reduce((s,h) => s + h.shares*h.price, 0);
+  return `PORTFOLIO CONTEXT (as of today):
+Total value: ~$${Math.round(totalVal).toLocaleString()}
+Monthly return goal: 2% minimum (~$${Math.round(totalVal*0.02).toLocaleString()}/month)
+Current options income this month: ~$320 (covered calls on AAPL and MSFT, CSP on NVDA)
+
+Holdings:
+${lines}`;
+}
+
+function appendMsg(role, html, isHtml=false) {
+  const container = document.getElementById('messages');
+  const isUser = role === 'user';
+  const div = document.createElement('div');
+  div.className = 'msg' + (isUser ? ' user-msg' : '');
+  const content = isHtml ? html : html.replace(/\n/g,'<br>');
+  div.innerHTML = `
+    <div class="avatar ${isUser ? 'user-av' : 'ai-av'}">${isUser ? 'You' : '<i class="ti ti-robot"></i>'}</div>
+    <div class="bubble ${isUser ? 'user-bubble' : 'ai-bubble'}">${content}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function showLoading() {
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg';
+  div.id = 'loading-indicator';
+  div.innerHTML = `
+    <div class="avatar ai-av"><i class="ti ti-robot"></i></div>
+    <div class="bubble ai-bubble loading-bubble">
+      <span style="font-size:12px;color:var(--text3);">Analyzing</span>
+      <div class="dots"><span></span><span></span><span></span></div>
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function formatAiResponse(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^#{1,4}\s+(.+)$/gm, '<h4>$1</h4>')
+    .replace(/\n/g, '<br>');
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  await sendAnalysis(text);
+}
+
+function quickAsk(text) {
+  switchTab('analysis');
+  setTimeout(() => sendAnalysis(text), 80);
+}
+
+async function sendAnalysis(text) {
+  const apiKey = getApiKey();
+  checkApiKey();
+  if (!apiKey) {
+    appendMsg('user', text);
+    appendMsg('assistant', '⚠️ No API key set. Please click <strong>API Key</strong> in the top right and enter your Anthropic key. Get one free at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>.');
+    return;
+  }
+
+  appendMsg('user', text);
+  chatHistory.push({ role:'user', content: text });
+  showLoading();
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+
+  const systemPrompt = `You are AlphaAgent — an expert AI investment analyst and portfolio manager. You have deep knowledge of stocks, options trading, technical analysis, fundamental analysis, income strategies, and risk management.
+
+${buildPortfolioContext()}
+
+Your mandate:
+1. Help generate at least 2% monthly returns (capital gains + options income combined)
+2. Build long-term portfolio growth through quality stock selection
+3. Generate steady income via covered calls, cash-secured puts, and the wheel strategy
+4. Manage risk appropriately — protect downside while maximizing upside
+
+Response guidelines:
+- Be SPECIFIC: give exact tickers, entry prices, stop losses, price targets, position sizes
+- For options: specify exact strikes, expirations, expected premium, delta, and rationale
+- For covered calls: verify cost basis allows writing profitably, suggest optimal strike/expiry
+- For short ideas: give entry, stop, target, and clear bearish thesis
+- Consider current macro environment and sector momentum
+- Keep responses focused and actionable — no generic advice
+- Format with clear structure using **bold** for key terms and headings when helpful
+- Flag risks clearly
+
+Today's date: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: chatHistory.slice(-12)
+      })
+    });
+
+    const data = await resp.json();
+    const loadEl = document.getElementById('loading-indicator');
+    if (loadEl) loadEl.remove();
+
+    if (data.content && data.content[0] && data.content[0].text) {
+      const reply = data.content[0].text;
+      chatHistory.push({ role:'assistant', content: reply });
+      appendMsg('assistant', formatAiResponse(reply), true);
+    } else if (data.error) {
+      appendMsg('assistant', `<strong>Error:</strong> ${data.error.message || 'API error. Check your key and try again.'}`);
+    } else {
+      appendMsg('assistant', 'Unexpected response from API. Please try again.');
+    }
+  } catch(err) {
+    const loadEl = document.getElementById('loading-indicator');
+    if (loadEl) loadEl.remove();
+    appendMsg('assistant', `<strong>Connection error:</strong> ${err.message}. Please check your API key and internet connection.`);
+  }
+  btn.disabled = false;
+}
+
+function handleEnter(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+/* ── CHARTS ── */
+function initCharts() {
+  const isDark = true;
+  const gridColor = 'rgba(255,255,255,0.07)';
+  const textColor = '#8b949e';
+
+  // Performance chart
+  const perfCtx = document.getElementById('perf-chart');
+  if (perfCtx) {
+    new Chart(perfCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','May'],
+        datasets: [
+          {
+            label: 'Portfolio Return %',
+            data: [1.8, 2.9, 4.1, 2.2, 2.9],
+            backgroundColor: (ctx) => ctx.raw >= 2 ? 'rgba(63,185,80,0.7)' : 'rgba(210,153,34,0.7)',
+            borderRadius: 4,
+          },
+          {
+            label: '2% Target',
+            data: [2, 2, 2, 2, 2],
+            type: 'line',
+            borderColor: 'rgba(88,166,255,0.6)',
+            borderDash: [5,4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } }
+        },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: textColor } },
+          y: {
+            grid: { color: gridColor }, ticks: { color: textColor, callback: v => v+'%' },
+            min: 0, max: 5
+          }
+        }
+      }
+    });
+  }
+
+  // Allocation donut
+  const allocCtx = document.getElementById('alloc-chart');
+  if (allocCtx) {
+    const vals = holdings.map(h => Math.round(h.shares * h.price));
+    const labels = holdings.map(h => h.ticker);
+    const colors = ['#58a6ff','#3fb950','#f0883e','#8b5cf6','#2dd4bf','#6e7681'];
+    new Chart(allocCtx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: vals,
+          backgroundColor: colors.slice(0, vals.length),
+          borderColor: '#0d1117',
+          borderWidth: 2,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: {
+            display: true,
+            position: 'right',
+            labels: { color: textColor, font: { size: 12 }, padding: 10, boxWidth: 10, boxHeight: 10 }
+          },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: $${ctx.raw.toLocaleString()}` } }
+        }
+      }
+    });
+  }
+}
+
+/* ── INIT ── */
+renderHoldings();
+checkApiKey();
+window.addEventListener('load', initCharts);
+</script>
+</body>
+</html>
