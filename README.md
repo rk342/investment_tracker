@@ -60,10 +60,11 @@ Then open `http://localhost:8080` in your browser.
 
 ```
 investment_tracker/
-├── index.html      # Entire application (HTML, CSS, JS)
-├── constants.js    # Local config: OAuth IDs, backend URL, allowed users
+├── index.html       # Entire application (HTML, CSS, JS)
+├── constants.js     # Local config: OAuth IDs, backend URL, allowed users
+├── config.js        # Runtime feature flags (e.g. disable Google sign-in)
 ├── sheet-backend.gs # Google Apps Script backend for Google Sheets persistence
-└── .gitignore      # Local-only files ignored by Git
+└── .gitignore       # Local-only files ignored by Git
 ```
 
 ## Tech Stack

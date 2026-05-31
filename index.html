@@ -12,6 +12,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="./constants.js"></script>
+<script src="./config.js"></script>
 <style>
   :root {
     --bg: #0d1117;
@@ -1018,6 +1019,14 @@ function setSessionToken(token) {
     localStorage.removeItem(SESSION_TOKEN_KEY);
   }
 }
+function isGoogleSignInEnabled() {
+  return typeof ENABLE_GOOGLE_SIGN_IN === 'undefined' ? true : !!ENABLE_GOOGLE_SIGN_IN;
+}
+function ensureLocalAccessMode() {
+  if (!isGoogleSignInEnabled() && !googleUser) {
+    applyGoogleUser({ name: 'Local User', email: 'local@local', picture: '' });
+  }
+}
 async function apiRequest(path, method = 'GET', payload = null) {
   if (!BACKEND_API_URL || !googleUser) return null;
   const token = getSessionToken();
@@ -1137,7 +1146,12 @@ function applyGoogleUser(user) {
 
 function hydrateGoogleUser() {
   const raw = localStorage.getItem(GOOGLE_USER_KEY);
-  if (!raw) return;
+  if (!raw) {
+    if (!isGoogleSignInEnabled()) {
+      googleUser = { name: 'Local User', email: 'local@local', picture: '' };
+    }
+    return;
+  }
   try {
     googleUser = JSON.parse(raw);
   } catch {
@@ -1151,12 +1165,12 @@ function updateAuthUi() {
   const signIn = document.getElementById('google-signin-btn');
   const hint = document.getElementById('google-auth-hint');
 
-  if (googleUser) {
+  if (googleUser || !isGoogleSignInEnabled()) {
     chip.classList.add('open');
-    document.getElementById('user-name').textContent = googleUser.name || googleUser.email || 'Signed in';
-    document.getElementById('user-avatar').src = googleUser.picture || '';
+    document.getElementById('user-name').textContent = googleUser?.name || 'Local User';
+    document.getElementById('user-avatar').src = (googleUser && googleUser.picture) || '';
     signIn.style.display = 'none';
-    hint.textContent = googleUser.email || '';
+    hint.textContent = isGoogleSignInEnabled() ? (googleUser?.email || '') : 'Google sign-in is disabled. App is unlocked.';
     setAuthLock(false);
     if (!backendDataLoaded && getSessionToken()) {
       loadBackendData().then(() => { backendDataLoaded = true; });
@@ -1222,6 +1236,13 @@ function initializeGoogleAuth() {
   const btnContainer = document.getElementById('google-signin-btn');
   const clientId = getGoogleClientId();
 
+  if (!isGoogleSignInEnabled()) {
+    hint.textContent = 'Google sign-in is disabled. App is unlocked.';
+    btnContainer.innerHTML = '';
+    updateAuthUi();
+    return;
+  }
+
   if (!clientId) {
     hint.textContent = 'Add your Google Client ID in Google Setup.';
     btnContainer.innerHTML = '';
@@ -1270,6 +1291,11 @@ function signOutGoogle() {
   const email = googleUser && googleUser.email;
   applyGoogleUser(null);
   setSessionToken(null);
+
+  if (!isGoogleSignInEnabled()) {
+    applyGoogleUser({ name: 'Local User', email: 'local@local', picture: '' });
+    return;
+  }
 
   if (window.google && window.google.accounts && window.google.accounts.id) {
     window.google.accounts.id.disableAutoSelect();
