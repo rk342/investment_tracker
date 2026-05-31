@@ -44,11 +44,26 @@ npx serve .
 
 Then open `http://localhost:8080` in your browser.
 
+### 3. Google Sheets backend (optional)
+
+1. Open [Google Apps Script](https://script.google.com/) and create a new project.
+2. Paste the contents of `sheet-backend.gs` into the script editor.
+3. Set `SPREADSHEET_ID` to the ID of a Google Sheet you create for persistence.
+4. Set `BACKEND_CLIENT_ID` to the same OAuth client ID you saved for Google sign-in.
+5. Deploy the script as a **Web App**. Choose **Execute as: Me** and **Who has access: Anyone** or **Anyone with Google account**.
+6. Copy the Web App URL and paste it into `SHEETS_BACKEND_URL` inside `constants.js`.
+7. Reload the app and sign in. Your holdings and watchlist will now persist to Google Sheets.
+
+> Note: `constants.js` is intentionally ignored by Git; this means your backend URL and client token stay local.
+
 ## Project Structure
 
 ```
 investment_tracker/
-└── index.html    # Entire application (HTML, CSS, JS)
+├── index.html      # Entire application (HTML, CSS, JS)
+├── constants.js    # Local config: OAuth IDs, backend URL, allowed users
+├── sheet-backend.gs # Google Apps Script backend for Google Sheets persistence
+└── .gitignore      # Local-only files ignored by Git
 ```
 
 ## Tech Stack

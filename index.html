@@ -888,43 +888,7 @@
               <button class="add-btn" onclick="addWatch()"><i class="ti ti-plus"></i> Add</button>
             </div>
           </div>
-          <div id="watchlist-items">
-            <div class="watch-item">
-              <div class="watch-left">
-                <div class="watch-ticker">META</div>
-                <div class="watch-note">AI ad revenue + VR monetization</div>
-              </div>
-              <button class="small-chip" onclick="quickAsk('Give me a detailed analysis of META stock. Should I buy it now? Include technicals, fundamentals, price targets, and any options play.');switchTab('analysis')">Analyze ↗</button>
-            </div>
-            <div class="watch-item">
-              <div class="watch-left">
-                <div class="watch-ticker">AMZN</div>
-                <div class="watch-note">AWS cloud growth + margin expansion</div>
-              </div>
-              <button class="small-chip" onclick="quickAsk('Give me a detailed analysis of AMZN stock. Should I buy it now? Include technicals, fundamentals, price targets, and any options play.');switchTab('analysis')">Analyze ↗</button>
-            </div>
-            <div class="watch-item">
-              <div class="watch-left">
-                <div class="watch-ticker">PLTR</div>
-                <div class="watch-note">Government + commercial AI contracts</div>
-              </div>
-              <button class="small-chip" onclick="quickAsk('Analyze PLTR stock in depth. Is it overvalued or does the AI government contract thesis justify current valuation? Buy, sell, or wait?');switchTab('analysis')">Analyze ↗</button>
-            </div>
-            <div class="watch-item">
-              <div class="watch-left">
-                <div class="watch-ticker">GLD</div>
-                <div class="watch-note">Inflation hedge / safe haven demand</div>
-              </div>
-              <button class="small-chip" onclick="quickAsk('Should I add GLD as a hedge in my portfolio? How much allocation makes sense given current macro environment?');switchTab('analysis')">Analyze ↗</button>
-            </div>
-            <div class="watch-item">
-              <div class="watch-left">
-                <div class="watch-ticker">TSM</div>
-                <div class="watch-note">Semiconductor foundry AI chip demand</div>
-              </div>
-              <button class="small-chip" onclick="quickAsk('Analyze TSM stock. Is this a good buy for AI chip exposure vs owning NVDA directly?');switchTab('analysis')">Analyze ↗</button>
-            </div>
-          </div>
+          <div id="watchlist-items"></div>
         </div>
 
         <div class="card">
@@ -1035,9 +999,82 @@ let holdings = [
 let chatHistory = [];
 let googleInitAttempts = 0;
 let googleUser = null;
+let backendDataLoaded = false;
+let watchlist = [
+  { ticker: 'META', note: 'AI ad revenue + VR monetization' },
+  { ticker: 'AMZN', note: 'AWS cloud growth + margin expansion' },
+  { ticker: 'PLTR', note: 'Government + commercial AI contracts' },
+  { ticker: 'GLD', note: 'Inflation hedge / safe haven demand' },
+  { ticker: 'TSM', note: 'Semiconductor foundry AI chip demand' },
+];
 
 /* ── GOOGLE AUTH ── */
 function getGoogleClientId() { return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ''; }
+function getGoogleIdToken() { return localStorage.getItem(GOOGLE_ID_TOKEN_KEY) || ''; }
+function setGoogleIdToken(token) {
+  if (token) {
+    localStorage.setItem(GOOGLE_ID_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(GOOGLE_ID_TOKEN_KEY);
+  }
+}
+async function sendBackend(action, payload = {}) {
+  if (!SHEETS_BACKEND_URL || !googleUser) return null;
+  const idToken = getGoogleIdToken();
+  if (!idToken) return null;
+
+  try {
+    const response = await fetch(SHEETS_BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        email: googleUser.email,
+        id_token: idToken,
+        data: payload
+      })
+    });
+    const result = await response.json();
+    if (!response.ok || result.error) {
+      console.warn('Sheets backend error:', result.error || response.statusText);
+      return null;
+    }
+    return result;
+  } catch (err) {
+    console.warn('Sheets backend request failed:', err);
+    return null;
+  }
+}
+async function loadBackendData() {
+  if (!SHEETS_BACKEND_URL || !googleUser) return;
+  const result = await sendBackend('load');
+  if (!result) return;
+  if (Array.isArray(result.holdings) && result.holdings.length) {
+    holdings = result.holdings;
+    renderHoldings();
+  }
+  if (Array.isArray(result.watchlist) && result.watchlist.length) {
+    watchlist = result.watchlist;
+    renderWatchlist();
+  }
+}
+async function saveBackendData() {
+  if (!SHEETS_BACKEND_URL || !googleUser) return;
+  await sendBackend('save', { holdings, watchlist });
+}
+function renderWatchlist() {
+  const container = document.getElementById('watchlist-items');
+  if (!container) return;
+  container.innerHTML = watchlist.map(item => `
+    <div class="watch-item">
+      <div class="watch-left">
+        <div class="watch-ticker">${item.ticker}</div>
+        <div class="watch-note">${item.note}</div>
+      </div>
+      <button class="small-chip" onclick="quickAsk('Analyze ${item.ticker} stock in depth. Should I buy it now? Include technicals, fundamentals, price targets, and any options strategy.');switchTab('analysis')">Analyze ↗</button>
+    </div>
+  `).join('');
+}
 
 function openGoogleModal() {
   document.getElementById('google-client-id-input').value = getGoogleClientId();
@@ -1116,6 +1153,9 @@ function updateAuthUi() {
     signIn.style.display = 'none';
     hint.textContent = googleUser.email || '';
     setAuthLock(false);
+    if (!backendDataLoaded && getGoogleIdToken()) {
+      loadBackendData().then(() => { backendDataLoaded = true; });
+    }
   } else {
     chip.classList.remove('open');
     document.getElementById('user-name').textContent = '';
@@ -1140,9 +1180,11 @@ function onGoogleCredential(response) {
   if (!isEmailAllowed(email)) {
     alert('Access denied. This app is restricted to authorized email addresses only.');
     applyGoogleUser(null);
+    setGoogleIdToken(null);
     return;
   }
 
+  setGoogleIdToken(response.credential);
   applyGoogleUser({
     sub: payload.sub,
     name: payload.name,
@@ -1150,6 +1192,7 @@ function onGoogleCredential(response) {
     picture: payload.picture,
     givenName: payload.given_name
   });
+  loadBackendData();
 }
 
 function initializeGoogleAuth() {
@@ -1204,6 +1247,7 @@ function initializeGoogleAuth() {
 function signOutGoogle() {
   const email = googleUser && googleUser.email;
   applyGoogleUser(null);
+  setGoogleIdToken(null);
 
   if (window.google && window.google.accounts && window.google.accounts.id) {
     window.google.accounts.id.disableAutoSelect();
@@ -1306,18 +1350,11 @@ function addWatch() {
   const t = document.getElementById('watch-input').value.trim().toUpperCase();
   const note = document.getElementById('watch-note-input').value.trim() || 'Added for analysis';
   if (!t) return;
-  const div = document.createElement('div');
-  div.className = 'watch-item';
-  div.innerHTML = `
-    <div class="watch-left">
-      <div class="watch-ticker">${t}</div>
-      <div class="watch-note">${note}</div>
-    </div>
-    <button class="small-chip" onclick="quickAsk('Analyze ${t} stock in depth. Should I buy it? Give me technicals, fundamentals, price target, and any options strategy.');switchTab('analysis')">Analyze ↗</button>
-  `;
-  document.getElementById('watchlist-items').appendChild(div);
+  watchlist.push({ ticker: t, note });
+  renderWatchlist();
   document.getElementById('watch-input').value = '';
   document.getElementById('watch-note-input').value = '';
+  saveBackendData();
 }
 
 /* ── CHAT ── */
@@ -1560,6 +1597,7 @@ hydrateGoogleUser();
 updateAuthUi();
 initializeGoogleAuth();
 renderHoldings();
+renderWatchlist();
 checkApiKey();
 window.addEventListener('load', initCharts);
 </script>
