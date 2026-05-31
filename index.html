@@ -1028,22 +1028,22 @@ async function sendBackend(action, payload = {}) {
   if (!idToken) return null;
 
   try {
-    const response = await fetch(SHEETS_BACKEND_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action,
-        email: googleUser.email,
-        id_token: idToken,
-        data: payload
-      })
-    });
-    const result = await response.json();
-    if (!response.ok || result.error) {
-      console.warn('Sheets backend error:', result.error || response.statusText);
+    const body = JSON.stringify({ action, email: googleUser.email, id_token: idToken, data: payload });
+    console.debug('Sheets backend request ->', SHEETS_BACKEND_URL, body);
+    const response = await fetch(SHEETS_BACKEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    const text = await response.text();
+    let result = null;
+    try { result = JSON.parse(text); } catch (e) { /* not JSON */ }
+    console.debug('Sheets backend response', response.status, text, result);
+    if (!response.ok) {
+      console.warn('Sheets backend HTTP error:', response.status, response.statusText, result);
       return null;
     }
-    return result;
+    if (result && result.error) {
+      console.warn('Sheets backend returned error:', result.error);
+      return result;
+    }
+    return result || { ok: true };
   } catch (err) {
     console.warn('Sheets backend request failed:', err);
     return null;
