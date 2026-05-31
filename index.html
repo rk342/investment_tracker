@@ -1075,8 +1075,51 @@ async function loadBackendData() {
     renderWatchlist();
   }
 }
+function saveLocalData() {
+  try {
+    localStorage.setItem('alphaagent_local_holdings', JSON.stringify(holdings || []));
+    localStorage.setItem('alphaagent_local_watchlist', JSON.stringify(watchlist || []));
+  } catch (err) {
+    console.warn('Failed to save local data:', err);
+  }
+}
+
+function loadLocalData() {
+  try {
+    const rawH = localStorage.getItem('alphaagent_local_holdings');
+    const rawW = localStorage.getItem('alphaagent_local_watchlist');
+    if (rawH) {
+      const parsed = JSON.parse(rawH);
+      if (Array.isArray(parsed)) {
+        holdings = parsed;
+        renderHoldings();
+      }
+    }
+    if (rawW) {
+      const parsedW = JSON.parse(rawW);
+      if (Array.isArray(parsedW)) {
+        watchlist = parsedW;
+        renderWatchlist();
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load local data:', err);
+  }
+}
+
 async function saveBackendData() {
-  if (!BACKEND_API_URL || !googleUser) return;
+  // If Google sign-in is disabled, or there's no session token, persist locally.
+  if (!isGoogleSignInEnabled()) {
+    saveLocalData();
+    return;
+  }
+  const token = getSessionToken();
+  if (!BACKEND_API_URL || !googleUser || !token) {
+    // fallback to local save when backend/session isn't available
+    saveLocalData();
+    return;
+  }
+
   await apiRequest('/api/user', 'POST', { holdings, watchlist });
 }
 function renderWatchlist() {
@@ -1650,8 +1693,12 @@ function initCharts() {
 hydrateGoogleUser();
 updateAuthUi();
 initializeGoogleAuth();
-if (googleUser && getSessionToken()) {
+// Load persisted data: prefer backend when signed in with a session token, otherwise use localStorage
+if (isGoogleSignInEnabled() && getSessionToken() && googleUser) {
   loadBackendData().then(() => { backendDataLoaded = true; });
+} else {
+  loadLocalData();
+  backendDataLoaded = true;
 }
 renderHoldings();
 renderWatchlist();
