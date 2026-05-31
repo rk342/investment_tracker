@@ -1022,6 +1022,9 @@ function setSessionToken(token) {
 function isGoogleSignInEnabled() {
   return typeof ENABLE_GOOGLE_SIGN_IN === 'undefined' ? true : !!ENABLE_GOOGLE_SIGN_IN;
 }
+function isAutoAnalyzeOnAddEnabled() {
+  return typeof AUTO_ANALYZE_ON_ADD_TICKER === 'undefined' ? true : !!AUTO_ANALYZE_ON_ADD_TICKER;
+}
 function ensureLocalAccessMode() {
   if (!isGoogleSignInEnabled() && !googleUser) {
     applyGoogleUser({ name: 'Local User', email: 'local@local', picture: '' });
@@ -1390,8 +1393,10 @@ function addHolding() {
   renderHoldings();
   saveBackendData();
   ['new-ticker','new-shares','new-cost','new-price'].forEach(id => document.getElementById(id).value = '');
-  quickAsk(`I just added ${t} to my portfolio: ${s} shares at $${c} avg cost. Analyze this position — should I have bought it? What's the outlook, price target, and should I use any options strategy on it?`);
-  switchTab('analysis');
+  if (isAutoAnalyzeOnAddEnabled()) {
+    quickAsk(`I just added ${t} to my portfolio: ${s} shares at $${c} avg cost. Analyze this position — should I have bought it? What's the outlook, price target, and should I use any options strategy on it?`);
+    switchTab('analysis');
+  }
 }
 
 /* ── WATCHLIST ── */
