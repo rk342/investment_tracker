@@ -1010,48 +1010,49 @@ let watchlist = [
 
 /* ── GOOGLE AUTH ── */
 function getGoogleClientId() { return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ''; }
-function getGoogleIdToken() { return localStorage.getItem(GOOGLE_ID_TOKEN_KEY) || ''; }
-function setGoogleIdToken(token) {
+function getSessionToken() { return localStorage.getItem(SESSION_TOKEN_KEY) || ''; }
+function setSessionToken(token) {
   if (token) {
-    localStorage.setItem(GOOGLE_ID_TOKEN_KEY, token);
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
   } else {
-    localStorage.removeItem(GOOGLE_ID_TOKEN_KEY);
+    localStorage.removeItem(SESSION_TOKEN_KEY);
   }
 }
-async function sendBackend(action, payload = {}) {
-  if (!SHEETS_BACKEND_URL || !googleUser) return null;
-  if (SHEETS_BACKEND_URL.includes('docs.google.com/spreadsheets')) {
-    console.warn('SHEETS_BACKEND_URL is a spreadsheet URL. Use the deployed Apps Script Web App endpoint URL instead.');
-    return null;
-  }
-  const idToken = getGoogleIdToken();
-  if (!idToken) return null;
+async function apiRequest(path, method = 'GET', payload = null) {
+  if (!BACKEND_API_URL || !googleUser) return null;
+  const token = getSessionToken();
+  if (!token) return null;
 
   try {
-    const body = JSON.stringify({ action, email: googleUser.email, id_token: idToken, data: payload });
-    console.debug('Sheets backend request ->', SHEETS_BACKEND_URL, body);
-    const response = await fetch(SHEETS_BACKEND_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    const response = await fetch(`${BACKEND_API_URL}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: payload ? JSON.stringify(payload) : undefined
+    });
     const text = await response.text();
     let result = null;
-    try { result = JSON.parse(text); } catch (e) { /* not JSON */ }
-    console.debug('Sheets backend response', response.status, text, result);
+    try { result = JSON.parse(text); } catch {}
+    console.debug('Backend request', path, response.status, text, result);
     if (!response.ok) {
-      console.warn('Sheets backend HTTP error:', response.status, response.statusText, result);
+      console.warn('Backend HTTP error:', response.status, response.statusText, result);
       return null;
     }
     if (result && result.error) {
-      console.warn('Sheets backend returned error:', result.error);
+      console.warn('Backend returned error:', result.error);
       return result;
     }
     return result || { ok: true };
   } catch (err) {
-    console.warn('Sheets backend request failed:', err);
+    console.warn('Backend request failed:', err);
     return null;
   }
 }
 async function loadBackendData() {
-  if (!SHEETS_BACKEND_URL || !googleUser) return;
-  const result = await sendBackend('load');
+  if (!BACKEND_API_URL || !googleUser) return;
+  const result = await apiRequest('/user', 'GET');
   if (!result) return;
   if (Array.isArray(result.holdings) && result.holdings.length) {
     holdings = result.holdings;
@@ -1063,8 +1064,8 @@ async function loadBackendData() {
   }
 }
 async function saveBackendData() {
-  if (!SHEETS_BACKEND_URL || !googleUser) return;
-  await sendBackend('save', { holdings, watchlist });
+  if (!BACKEND_API_URL || !googleUser) return;
+  await apiRequest('/user', 'POST', { holdings, watchlist });
 }
 function renderWatchlist() {
   const container = document.getElementById('watchlist-items');
@@ -1157,7 +1158,7 @@ function updateAuthUi() {
     signIn.style.display = 'none';
     hint.textContent = googleUser.email || '';
     setAuthLock(false);
-    if (!backendDataLoaded && getGoogleIdToken()) {
+    if (!backendDataLoaded && getSessionToken()) {
       loadBackendData().then(() => { backendDataLoaded = true; });
     }
   } else {
@@ -1169,7 +1170,7 @@ function updateAuthUi() {
   }
 }
 
-function onGoogleCredential(response) {
+async function onGoogleCredential(response) {
   if (!response || !response.credential) {
     alert('Google sign-in failed. Please try again.');
     return;
@@ -1184,11 +1185,28 @@ function onGoogleCredential(response) {
   if (!isEmailAllowed(email)) {
     alert('Access denied. This app is restricted to authorized email addresses only.');
     applyGoogleUser(null);
-    setGoogleIdToken(null);
+    setSessionToken(null);
     return;
   }
 
-  setGoogleIdToken(response.credential);
+  if (!BACKEND_API_URL) {
+    alert('Please configure BACKEND_API_URL in constants.js to point to your backend service.');
+    return;
+  }
+
+  const authResponse = await fetch(`${BACKEND_API_URL}/auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id_token: response.credential })
+  });
+  const authResult = await authResponse.json();
+
+  if (!authResponse.ok || authResult.error) {
+    alert('Authentication failed. ' + (authResult.error || authResponse.statusText));
+    return;
+  }
+
+  setSessionToken(authResult.token);
   applyGoogleUser({
     sub: payload.sub,
     name: payload.name,
@@ -1196,7 +1214,7 @@ function onGoogleCredential(response) {
     picture: payload.picture,
     givenName: payload.given_name
   });
-  loadBackendData();
+  await loadBackendData();
 }
 
 function initializeGoogleAuth() {
@@ -1251,7 +1269,7 @@ function initializeGoogleAuth() {
 function signOutGoogle() {
   const email = googleUser && googleUser.email;
   applyGoogleUser(null);
-  setGoogleIdToken(null);
+  setSessionToken(null);
 
   if (window.google && window.google.accounts && window.google.accounts.id) {
     window.google.accounts.id.disableAutoSelect();
@@ -1344,6 +1362,7 @@ function addHolding() {
   if (holdings.find(h => h.ticker === t)) { alert(t + ' is already in your portfolio.'); return; }
   holdings.push({ ticker:t, shares:s, cost:c, price:p, signal:'hold' });
   renderHoldings();
+  saveBackendData();
   ['new-ticker','new-shares','new-cost','new-price'].forEach(id => document.getElementById(id).value = '');
   quickAsk(`I just added ${t} to my portfolio: ${s} shares at $${c} avg cost. Analyze this position — should I have bought it? What's the outlook, price target, and should I use any options strategy on it?`);
   switchTab('analysis');
@@ -1600,6 +1619,9 @@ function initCharts() {
 hydrateGoogleUser();
 updateAuthUi();
 initializeGoogleAuth();
+if (googleUser && getSessionToken()) {
+  loadBackendData().then(() => { backendDataLoaded = true; });
+}
 renderHoldings();
 renderWatchlist();
 checkApiKey();

@@ -1,1 +1,7 @@
 # Ignore local app constants containing authorized emails and client IDs
+constants.js
+
+# Backend dependencies and local environment
+node_modules/
+.env
+data.db
