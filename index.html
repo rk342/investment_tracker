@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="./constants.js"></script>
 <style>
   :root {
     --bg: #0d1117;
@@ -1034,13 +1035,6 @@ let holdings = [
 let chatHistory = [];
 let googleInitAttempts = 0;
 let googleUser = null;
-
-const GOOGLE_CLIENT_ID_KEY = 'alphaagent_google_client_id';
-const GOOGLE_USER_KEY = 'alphaagent_google_user';
-const ALLOWED_EMAILS = [
-  'rkochhar@gmail.com',
-  'rekha.kochhar@gmail.com'
-];
 
 /* ── GOOGLE AUTH ── */
 function getGoogleClientId() { return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ''; }

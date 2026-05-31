@@ -1,0 +1,2 @@
+# Ignore local app constants containing authorized emails and client IDs
+constants.js
