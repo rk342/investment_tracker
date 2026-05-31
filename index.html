@@ -1020,6 +1020,10 @@ function setGoogleIdToken(token) {
 }
 async function sendBackend(action, payload = {}) {
   if (!SHEETS_BACKEND_URL || !googleUser) return null;
+  if (SHEETS_BACKEND_URL.includes('docs.google.com/spreadsheets')) {
+    console.warn('SHEETS_BACKEND_URL is a spreadsheet URL. Use the deployed Apps Script Web App endpoint URL instead.');
+    return null;
+  }
   const idToken = getGoogleIdToken();
   if (!idToken) return null;
 
